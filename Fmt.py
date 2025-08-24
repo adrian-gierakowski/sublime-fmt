@@ -83,9 +83,11 @@ def fmt(view, input, encoding, scope):
         raise ErrMsg('expected setting "cmd" to be a list of strings, found {}'.format(cmd))
 
     # Support "$variable" substitutions.
-    variables = extract_variables(view)
+    selector = get_setting(view, 'selector', scope)
+    variables = extract_variables(view, selector)
     cmd = [sublime.expand_variables(arg, variables) for arg in cmd]
 
+    print('guess_cwd(view)', guess_cwd(view))
     proc = sub.Popen(
         args=cmd,
         stdin=sub.PIPE,
@@ -309,12 +311,16 @@ def every(iter, fun):
 def is_string(val):
     return isinstance(val, str)
 
-def extract_variables(view):
+def extract_variables(view, selector):
     settings = view.settings()
     tab_size = settings.get('tab_size') or 0
     indent = ' ' * tab_size if settings.get('translate_tabs_to_spaces') else '\t'
+    # Use selector if formatting buffer which has not been saved to file yet
+    file_path = view.file_name() or selector
 
     vars = view.window().extract_variables()
+
+    vars['file_path'] = file_path
     vars['tab_size'] = str(tab_size)
     vars['indent'] = indent
     vars.update(os.environ)
